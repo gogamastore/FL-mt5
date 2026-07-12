@@ -38,7 +38,8 @@ class RiskManager:
         acc = self.mt5.account_info()
         self.day_start_equity = acc.get("equity") if acc else None
 
-    def build_plan(self, symbol: str, direction: str, atr: float) -> TradePlan | None:
+    def build_plan(self, symbol: str, direction: str, atr: float,
+                   risk_percent: float | None = None) -> TradePlan | None:
         info = self.mt5.symbol_info(symbol)
         price = self.mt5.current_price(symbol)
         acc = self.mt5.account_info()
@@ -54,8 +55,8 @@ class RiskManager:
         else:
             sl, tp = entry + sl_dist, entry - tp_dist
 
-        # Ukuran lot dari % risiko
-        risk_money = acc["equity"] * self.s.risk_percent / 100
+        # Ukuran lot dari % risiko (per entry)
+        risk_money = acc["equity"] * (risk_percent or self.s.risk_percent) / 100
         tick_value = info.trade_tick_value or 0
         tick_size = info.trade_tick_size or info.point
         if tick_value <= 0 or tick_size <= 0:

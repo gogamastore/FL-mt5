@@ -7,14 +7,16 @@ class BotSettings(BaseModel):
     symbols: list[str] = ["XAUUSD", "EURUSD", "GBPUSD", "BTCUSD"]
 
     # Timeframe
-    trend_timeframes: list[str] = ["H4", "H1"]   # penentu arah
-    entry_timeframe: str = "M15"                  # timeframe eksekusi
+    trend_timeframes: list[str] = ["H1", "M30"]   # penentu arah
+    entry_timeframe: str = "M5"                  # timeframe eksekusi
 
-    # Confluence
-    min_score: int = 70          # skor minimum untuk entry (0-100)
+    # Confluence + multi-entry berbasis skor (mirip scalping):
+    # n = 1 + (score - min_score)//swing_score_step, maks max_entries per simbol.
+    min_score: int = 50          # skor minimum entry & basis 1 entry (0-100)
+    swing_score_step: int = 5    # tiap kenaikan skor sebesar ini → +1 entry
 
     # Risk management
-    risk_percent: float = 1.0    # % equity dirisikokan per trade
+    risk_percent: float = 0.5    # % equity per ENTRY swing (tiap entry pakai penuh)
     atr_period: int = 14
     sl_atr_mult: float = 1.5     # SL = 1.5 x ATR
     tp_atr_mult: float = 2.5     # TP = 2.5 x ATR
@@ -23,8 +25,9 @@ class BotSettings(BaseModel):
     trail_dist_atr: float = 1.0   # jarak trailing 1 x ATR
 
     # Proteksi
-    max_open_positions: int = 3
-    max_daily_drawdown_pct: float = 5.0
+    max_entries: int = 6         # maks entry swing per simbol dalam SATU keputusan
+    max_open_positions: int = 6  # maks total posisi swing bersamaan (semua simbol)
+    max_daily_drawdown_pct: float = 10.0
     magic_number: int = 202607
 
     # Mode scalping — MANDIRI: saat aktif, mode utama (swing) mati total.

@@ -53,10 +53,17 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          _slider(bot, 'Skor minimum entry: ${s.minScore}',
+          _slider(bot, 'Skor minimum entry (base): ${s.minScore}',
               s.minScore.toDouble(), 50, 100,
               (st, v) => st.minScore = v.round()),
-          _slider(bot, 'Risiko per trade: ${s.riskPercent.toStringAsFixed(1)}%',
+          _entryPreview(context, s.minScore, s.swingScoreStep, s.maxEntries,
+              'Kekuatan skor swing → jumlah entry'),
+          _slider(bot, 'Tiap +${s.swingScoreStep} skor → +1 entry',
+              s.swingScoreStep.toDouble(), 1, 10,
+              (st, v) => st.swingScoreStep = v.round()),
+          _slider(bot, 'Maks. entry per keputusan (per simbol): ${s.maxEntries}',
+              s.maxEntries.toDouble(), 1, 6, (st, v) => st.maxEntries = v.round()),
+          _slider(bot, 'Risiko per entry: ${s.riskPercent.toStringAsFixed(2)}%',
               s.riskPercent, 0.25, 5, (st, v) => st.riskPercent = v),
           _slider(bot, 'SL = ${s.slAtrMult.toStringAsFixed(1)} × ATR',
               s.slAtrMult, 0.5, 4, (st, v) => st.slAtrMult = v),
@@ -87,7 +94,8 @@ class SettingsScreen extends StatelessWidget {
             onChanged: (v) => bot.editSettings((st) => st.scalpEnabled = v),
           ),
           if (s.scalpEnabled) ...[
-            _entryPreview(context, s),
+            _entryPreview(context, s.scalpBaseScore, s.scalpScoreStep,
+                s.scalpMaxEntries, 'Kekuatan sinyal → jumlah entry'),
             _slider(bot, 'Skor minimum entry (base): ${s.scalpBaseScore}',
                 s.scalpBaseScore.toDouble(), 40, 70,
                 (st, v) => st.scalpBaseScore = v.round()),
@@ -160,19 +168,15 @@ class SettingsScreen extends StatelessWidget {
   }
 
   /// Pratinjau berapa entry untuk beberapa tingkat skor, mengikuti setting saat ini.
-  Widget _entryPreview(BuildContext context, dynamic s) {
+  Widget _entryPreview(BuildContext context, int base, int step, int maxEntries,
+      String title) {
     int entries(int score) {
-      if (score < s.scalpBaseScore) return 0;
-      final n = 1 + (score - s.scalpBaseScore) ~/ (s.scalpScoreStep as int);
-      return n.clamp(0, s.scalpMaxEntries as int);
+      if (score < base) return 0;
+      final n = 1 + (score - base) ~/ (step <= 0 ? 1 : step);
+      return n.clamp(0, maxEntries);
     }
 
-    final samples = <int>[
-      s.scalpBaseScore,
-      s.scalpBaseScore + s.scalpScoreStep,
-      s.scalpBaseScore + s.scalpScoreStep * 2,
-      s.scalpBaseScore + s.scalpScoreStep * 5,
-    ];
+    final samples = <int>[base, base + step, base + step * 2, base + step * 5];
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
@@ -180,8 +184,7 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Contoh: kekuatan sinyal → jumlah entry',
-                style: Theme.of(context).textTheme.bodySmall),
+            Text(title, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 6),
             Wrap(
               spacing: 8,

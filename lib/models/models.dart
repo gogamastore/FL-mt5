@@ -54,7 +54,7 @@ class Signal {
 
 class BotSettings {
   List<String> symbols;
-  int minScore;
+  int minScore, swingScoreStep, maxEntries;
   double riskPercent, slAtrMult, tpAtrMult;
   bool trailingEnabled, newsFilterEnabled;
   int maxOpenPositions;
@@ -63,6 +63,7 @@ class BotSettings {
   int scalpBaseScore, scalpScoreStep, scalpMaxEntries, scalpCooldownMin;
   double scalpRiskPercent, scalpMaxEfficiency, scalpMaxSpreadRatio;
   BotSettings({required this.symbols, required this.minScore,
+      required this.swingScoreStep, required this.maxEntries,
       required this.riskPercent, required this.slAtrMult,
       required this.tpAtrMult, required this.trailingEnabled,
       required this.newsFilterEnabled, required this.maxOpenPositions,
@@ -73,8 +74,10 @@ class BotSettings {
       required this.scalpMaxSpreadRatio, required this.scalpCooldownMin});
   factory BotSettings.fromJson(Map<String, dynamic> j) => BotSettings(
         symbols: List<String>.from(j['symbols'] ?? []),
-        minScore: j['min_score'] ?? 70,
-        riskPercent: (j['risk_percent'] ?? 1.0).toDouble(),
+        minScore: j['min_score'] ?? 50,
+        swingScoreStep: j['swing_score_step'] ?? 5,
+        maxEntries: j['max_entries'] ?? 6,
+        riskPercent: (j['risk_percent'] ?? 0.5).toDouble(),
         slAtrMult: (j['sl_atr_mult'] ?? 1.5).toDouble(),
         tpAtrMult: (j['tp_atr_mult'] ?? 2.5).toDouble(),
         trailingEnabled: j['trailing_enabled'] ?? true,
@@ -95,6 +98,8 @@ class BotSettings {
         ...base,
         'symbols': symbols,
         'min_score': minScore,
+        'swing_score_step': swingScoreStep,
+        'max_entries': maxEntries,
         'risk_percent': riskPercent,
         'sl_atr_mult': slAtrMult,
         'tp_atr_mult': tpAtrMult,

@@ -131,21 +131,40 @@ class BotEngine:
         sig_dict["mode"] = "swing"
         sig_dict["executed"] = False
 
-        can_enter = (symbol not in {p["symbol"] for p in swing_pos}
-                     and len(swing_pos) < self.s.max_open_positions)
-        if sig.direction and sig.score >= self.s.min_score and can_enter:
-            plan = self.risk.build_plan(symbol, sig.direction, sig.atr)
-            if plan and plan.volume > 0:
+        if sig.direction and sig.score >= self.s.min_score:
+            # Multi-entry berbasis skor (mirip scalping).
+            n = 1 + (sig.score - self.s.min_score) // max(self.s.swing_score_step, 1)
+            sym_count = sum(1 for p in swing_pos if p["symbol"] == symbol)
+            capacity = min(self.s.max_entries - sym_count,
+                           self.s.max_open_positions - len(swing_pos))
+            n = max(0, min(n, self.s.max_entries, capacity))
+            sig_dict["planned_entries"] = n
+
+            executed = 0
+            for k in range(n):
+                plan = self.risk.build_plan(symbol, sig.direction, sig.atr,
+                                            self.s.risk_percent)
+                if not plan or plan.volume <= 0:
+                    break
+                acc = self.mt5.account_info()
+                need = self.mt5.order_margin(symbol, sig.direction, plan.volume)
+                if not acc or need is None or acc.get("free_margin", 0) < need:
+                    log.info("Swing %s: margin tak cukup, entry ke-%d/%d dibatalkan",
+                             symbol, k + 1, n)
+                    break
                 result = self.executor.open_market(
                     symbol, sig.direction, plan.volume, plan.sl, plan.tp,
-                    comment=f"swing s{sig.score}")
-                if result["ok"]:
-                    sig_dict["executed"] = True
-                    self._publish("trade_opened", {
-                        "symbol": symbol, "direction": sig.direction, "mode": "swing",
-                        "volume": plan.volume, "sl": plan.sl, "tp": plan.tp,
-                        "score": sig.score, "reasons": sig.reasons,
-                    })
+                    comment=f"swing s{sig.score} {sym_count + k + 1}/{sym_count + n}")
+                if not result["ok"]:
+                    break
+                executed += 1
+                self._publish("trade_opened", {
+                    "symbol": symbol, "direction": sig.direction, "mode": "swing",
+                    "volume": plan.volume, "sl": plan.sl, "tp": plan.tp,
+                    "score": sig.score, "reasons": sig.reasons,
+                })
+            sig_dict["executed"] = executed > 0
+            sig_dict["executed_entries"] = executed
         self._record_signal(sig_dict)
 
     # ---------- mode scalping (mandiri: support/resisten + momentum) ----------
